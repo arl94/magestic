@@ -1,0 +1,23 @@
+{
+  "__default__" :
+  {
+    "sbatch" : "sbatch -o slurm/{rule}.{wildcards}.%j.out -e slurm/{rule}.{wildcards}.%j.out",
+    "n" : "{threads}",
+    "mem" : "8G",
+    "moreoptions" : "",
+    "time" : "24:00:00"
+  },
+  "combineResults" :
+  {
+    "mem" : "16G"
+  },
+  "createBarcodeDict":
+  {
+    "mem" : "32G"
+  },
+  "combineRefAlign":
+  {
+    "mem" : "64G",
+    "time" : "2-00:00:00"
+  }
+}

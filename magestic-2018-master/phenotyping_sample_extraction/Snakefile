@@ -1,0 +1,38 @@
+import os
+
+PATH = "/scratch/alederer/bartender-1.1-master/extracted_counts/"
+
+"""
+EXPERIMENTS = ["CST69", "CST39", "CST40", "CST41", 
+    "CST42", "CST43", "CST44", "CST45", 
+    "CST46", "CST47", "CST48_1", "CST48_2", 
+    "CST49", "CST50", "CST51", "CST52", 
+    "CST53", "CST54", "CST55", "CST56", 
+    "CST57", "CST58", "CST64", "CST65", 
+    "CST66", "CST67", "CST68", "CST69", 
+    "CST70", "CST71", "CST77"]
+"""
+
+EXPERIMENTS = ["CST72", "CST73", "CST74", "CST77"]
+
+SAMPLES = [exp+"_sequence/"+s for exp in EXPERIMENTS for s in os.listdir(exp+"_sequence") if ("_1_sequence" in s) and ("md5" not in s)]
+
+rule all:
+    input:
+        cluster_files = expand(PATH + "myscriptout/{sequencing_files}_cluster.csv.gz", sequencing_files = SAMPLES),
+        barcode_files = expand(PATH + "myscriptout/{sequencing_files}_barcode.csv.gz", sequencing_files = SAMPLES)
+
+rule prepSeqFiles:
+    input:
+        seq_file = PATH + "{sequencing_files}"
+    params:
+        cc = 20,
+        bc = 4,
+        qc = 60,
+        outfile = PATH + "myscriptout/{sequencing_files}"
+    output:
+        cluster_file = PATH + "myscriptout/{sequencing_files}_cluster.csv.gz",
+        barcode_file = PATH + "myscriptout/{sequencing_files}_barcode.csv.gz"
+    threads: 1
+    shell:
+        "python processPhenotypingSample.py -file {input.seq_file} -cluster_cutoff {params.cc} -barcode_cutoff {params.bc} -quality_cutoff {params.qc} -out {params.outfile}"

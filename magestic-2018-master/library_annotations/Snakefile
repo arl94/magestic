@@ -1,0 +1,124 @@
+import os
+
+SUBPOOLS = ['sk1_toy']
+DIRECTORIES = ['/scratch/alederer/barcode_annotations']
+
+"""
+STEP1_PATH = '/g/steinmetz/project/yeast_crispr/sequencing_data/library_sequence_data/step1/'
+SUBPOOLS = ['V204_S1', 'V205_S2', 'V206_S3', 'V207_S4', 'V208_S5', 'V209_S6', 'V210_S7', 'V211_S8', 'V228_S9', 'V229_S10']
+DIRECTORIES = ['.', STEP1_PATH + 'rm11_v3_round1/', STEP1_PATH + 'rm11_v3_round2/', STEP1_PATH + 'sk1_v3_round1', STEP1_PATH + 'sk1_v3_round2']
+"""
+
+DATABASE_DICTIONARY = {
+	"V204_S1": "SK1_V3",
+	"V205_S2": "SK1_V3",
+	"V206_S3": "SK1_V3",
+	"V207_S4": "SK1_V3",
+	"V208_S5": "RM11_V3",
+	"V209_S6": "RM11_V3",
+	"V210_S7": "RM11_V3",
+	"V211_S8": "RM11_V3",
+	"V228_S9": "SK1_V3",
+	"V229_S10": "RM11_V3",
+	"sk1_toy": "SK1_V3"
+}
+
+DESIGN_FILE_DICT = {
+	"RM11_V3": "rm11_design_file.txt.gz",
+	"SK1_V3": "sk1_design_file.txt.gz",
+	"sk1_toy": "sk1_design_file.txt.gz"
+}
+
+NUM_SEGS = 50 # number of segments process should be divided into.
+SEGS = [str(i) for i in range(0, NUM_SEGS)]
+
+def getForwardSequencingFiles(wildcards, directories=DIRECTORIES):
+	files = []
+	for d in directories:
+		files.extend([d+f for f in os.listdir(d)])
+	files = [f for f in files if (wildcards.subpools in f)]
+	return [f for f in files if "R1" in f]
+
+def getReverseSequencingFiles(wildcards, directories=DIRECTORIES):
+	files = []
+	for d in directories:
+		files.extend([d+f for f in os.listdir(d)])
+	files = [f for f in files if (wildcards.subpools in f)]
+	return [f for f in files if "R2" in f]
+
+def getDatabase(wildcards):
+	return DATABASE_DICTIONARY[wildcards.subpools]
+
+def getDesignFile(wildcards):
+	return DESIGN_FILE_DICT[DATABASE_DICTIONARY[wildcards.subpools]]
+
+rule all:
+	input: expand("{subpools}_final_collapsed.csv", subpools=SUBPOOLS)
+
+rule finalCombine:
+	input:
+		ref = expand("{{subpools}}_final_{segs}.cluster_dict", segs = SEGS),
+		ff = "{subpools}_final.csv"
+	output: "{subpools}_final_collapsed.csv"
+	threads: 1
+	shell:
+		"python finalCombine.py -in {input.ref} -final {input.ff}"
+
+rule combineRefAlign:
+	input:
+		ref = "{subpools}_final.csv"
+	params:
+		cutoff = 20,
+		s = "{segs}"
+	output: "{subpools}_final_{segs}.cluster_dict"
+	threads: 1
+	shell:
+		"python combineRefAlign.py -in {input.ref} -cutoff {params.cutoff} -segment {params.s} -total_segments " + str(NUM_SEGS)
+
+rule combineResults:
+	input:
+		mapped_files = expand("{{subpools}}_{segs}-" + str(NUM_SEGS) + "_consensus_queries.fasta_blast_mapped.csv", segs = SEGS),
+		count_dict = "{subpools}.read_count_dict"
+	params:
+		segs = NUM_SEGS,
+		library =  getDatabase
+	output: "{subpools}_final.csv"
+	threads: 1
+	shell:
+		"python combineResults.py -f {input.mapped_files} -c {input.count_dict} -s {params.segs} -l {params.library}" 
+
+rule runBlastn:
+	input:
+		filename = "{subpools}_{segs}-" + str(NUM_SEGS) + "_consensus_queries.fasta",
+		data_file = getDesignFile
+	params:
+		database = getDatabase
+	output:
+		mapped_file = "{subpools}_{segs}-" + str(NUM_SEGS) + "_consensus_queries.fasta_blast_mapped.csv"
+	threads: 1
+	shell:
+		"python runBlastn.py -in {input.filename} -db {params.database} -p {input.data_file}"
+
+rule findConsensus:
+	input:
+		r1_dict = "{subpools}_{segs}-"+str(NUM_SEGS)+".R1_dict",
+		r2_dict = "{subpools}_{segs}-"+str(NUM_SEGS)+".R2_dict",
+	output: "{subpools}_{segs}-" + str(NUM_SEGS) + "_consensus_queries.fasta"
+	params:
+		total_segments = NUM_SEGS
+	threads: 1
+	shell:
+		"python findConsensus.py -r1 {input.r1_dict} -r2 {input.r2_dict} -o {wildcards.subpools} -segment {wildcards.segs} -total {params.total_segments} -threshold 0.50"
+
+rule createBarcodeDict:
+	input: f = getForwardSequencingFiles, r = getReverseSequencingFiles
+	output:
+		R1_dicts = expand("{{subpools}}_{segs}-"+str(NUM_SEGS)+".R1_dict", segs=SEGS),
+		R2_dicts = expand("{{subpools}}_{segs}-"+str(NUM_SEGS)+".R2_dict", segs=SEGS),
+		read_count_dict = "{subpools}.read_count_dict"
+	params:
+		total_segments = NUM_SEGS,
+		cutoff = 0
+	threads: 1
+	shell:
+		"python createBarcodeDict.py -f {input.f} -r {input.r} -o {wildcards.subpools} -s {params.total_segments} -c {params.cutoff}"

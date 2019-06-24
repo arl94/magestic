@@ -1,0 +1,53 @@
+import os
+
+DATADIR = "/g/steinmetz/project/yeast_crispr/sequencing_data/annotated_counts_v2/"
+COUNT_GLM_TABLES = {
+  'FRJKL': 'FRJKL.sepnorm.mode.annotated.counts.csv.gz',
+  'RABC': 'RABC.sepnorm.mode.annotated.counts.csv.gz',
+  'RDEF': 'RDEF.sepnorm.mode.annotated.counts.csv.gz',
+  'RGHI': 'RGHI.sepnorm.mode.annotated.counts.csv.gz',
+  'RJKL': 'RJKL.sepnorm.mode.annotated.counts.csv.gz',
+  'RMNO': 'RMNO.sepnorm.mode.annotated.counts.csv.gz',
+  'RPQR': 'RPQR_joined_040718.modenorm.annotated.counts.csv.gz',
+  'SABC': 'SABC.sepnorm.mode.annotated.counts.csv.gz',
+  'SDEF': 'SDEF.sepnorm.mode.annotated.counts.csv.gz',
+  'SGHI': 'SGHI.sepnorm.mode.annotated.counts.csv.gz',
+  'RSABCDEF': 'RSABCDEF_counts_040718.modenorm.annotated.counts.csv.gz',
+  'CST34': 'CST34.annotated.modenormalized.counts.csv.gz'
+}
+
+MODELS = [i for i in os.listdir(DATADIR + "models/") if ("RSABCDEF" in i) or ("RPQR" in i)]
+MODELS_TO_EXPERIMENT = {m: m.split("_")[0] for m in MODELS if ("RSABCDEF" in m) or ("RPQR" in m)}
+
+assert len(MODELS) == len(MODELS_TO_EXPERIMENT)
+
+FEATURE_OUTNAME = {m: m.split(".csv")[0] for m in MODELS}
+BARCODE_OUTNAME = {m: m.split(".csv")[0] for m in MODELS}
+
+def getCountTable(wildcards):
+  return DATADIR + COUNT_GLM_TABLES[MODELS_TO_EXPERIMENT[wildcards.models]]
+
+rule all:
+  input:
+    expand("barcode_level/{models}_barcode_level_analysis.csv", models=MODELS),
+    expand("feature_level/{models}_feature_level_analysis.csv", models=MODELS)
+
+rule barcodeAnalysis:
+        input: 
+          table = getCountTable,
+          model = "models/{models}"
+        params:
+          out = "barcode_level/{models}"
+        output: "barcode_level/{models}_barcode_level_analysis.csv"
+        threads: 1
+        shell: "python analysis_cmd.py -t {input.table} -m {input.model} --barcode -o {params.out}"
+
+rule featureAnalysis:
+        input: 
+          table = getCountTable,
+          model = "models/{models}"
+        params:
+          out = "feature_level/{models}"
+        output: "feature_level/{models}_feature_level_analysis.csv"
+        threads: 1
+        shell: "python analysis_cmd.py -t {input.table} -m {input.model} --feature -o {params.out}"
