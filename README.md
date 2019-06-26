@@ -1,2 +1,2 @@
 # magestic
-Repository for code associated with MAGESTIC library annotation
+Repository for code associated with MAGESTIC library annotation. The subdirectory library-annotations-generic contains a self-contained script for running reference table annotation, with a few conditions. The magestic-2018-master subdirectory contains older annotation pipelines using Snakemake for both library annotation and statistical modeling of MAGESTIC counts data, from July 2018.
