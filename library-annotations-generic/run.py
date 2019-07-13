@@ -52,13 +52,6 @@ parser.add_argument("-bl", "-barcode_length",
 	action="store", 
 	dest="barcode_length")
 
-parser.add_argument("-r2f", "-read2_filter",
-	required=False,
-	default=None,
-	help="", 
-	action="store",
-	dest="r2_filter")
-
 parser.add_argument("-rc", "-read_cutoff",
 	required=False,
 	default=0,
@@ -93,6 +86,32 @@ parser.add_argument("-psl", "-primingseqlength",
 	help="length of priming sequence in bps to exclude from analysis (default=20)",
 	action="store",
 	dest="priming_seq_length")
+
+parser.add_argument("-bcd", "-barcode_cluster_distance",
+	required=False,
+	default=4,
+	help="maximum hamming distance between barcodes to permit mergeing (default=4)",
+	action="store",
+	dest="barcode_cluster_distance")
+
+parser.add_argument("-gcd", "-guide_cluster_distance",
+	required=False,
+	default=2,
+	help="maximum hamming distance between guides to permit mergeing (default=2)",
+	action="store",
+	dest="guide_cluster_distance")
+
+parser.add_argument("-dcd", "-donor_cluster_distance",
+	required=False,
+	default=8,
+	help="maximum hamming distance between donors to permit mergeing (default=8)",
+	action="store",
+	dest="donor_cluster_distance")
+
+
+BCD = int(args.barcode_cluster_distance)
+GCD = int(args.guide_cluster_distance)
+DCD = int(args.donor_cluster_distance)
 
 args = parser.parse_args()
 
@@ -458,7 +477,10 @@ if "unclustered_reference_table.csv" not in temp_files:
 		commands.append(subprocess.Popen("python combineRefAlign.py -in " + TMP + "unclustered_reference_table.csv " + 
 			" -cutoff " + str(CLUSTER_CUTOFF) + 
 			" -segment " + str(i) + 
-			" -total_segments " + str(TOTAL_SEGMENTS), shell=True))
+			" -total_segments " + str(TOTAL_SEGMENTS) +  
+			"-bcd " + str(BCD) +
+			"-gcd " + str(GCD) + 
+			"-dcd " + str(DCD),shell=True))
 
 	exit_codes = [p.wait() for p in commands]
 

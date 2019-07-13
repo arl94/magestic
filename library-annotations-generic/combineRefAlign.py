@@ -21,7 +21,14 @@ parser.add_argument('-in', required=True, help="input reference table for barcod
 parser.add_argument('-cutoff', required=True, help="read count cutoff between low and high read barcodes", action='store', dest='cutoff')
 parser.add_argument('-segment', required=True, help="current segment to process", action='store', dest='segment')
 parser.add_argument('-total_segments', required=True, help="total number of segments to divide into", action='store', dest='total_segments')
+parser.add_argument('-bcd', required=True, dest='bcd')
+parser.add_argument('-gcd', required=True, dest='gcd')
+parser.add_argument('-dcd', required=True, dest='dcd')
 args = parser.parse_args()
+
+BARCODE_CUTOFF = int(args.bcd)
+GUIDE_CUTOFF = int(args.gcd)
+DONOR_CUTOFF = int(args.dcd)
 
 FILENAME = args.file
 ref_table = pd.read_csv(FILENAME)
@@ -40,10 +47,6 @@ if (segment+1 == total_segments):
 else:
 	stop = int((LENGTH/total_segments)*(segment+1))
 	low_reads = low_reads.iloc[start:stop]
-
-BARCODE_CUTOFF = 4
-GUIDE_CUTOFF = 2
-DONOR_CUTOFF = 8
 
 nl = []
 
